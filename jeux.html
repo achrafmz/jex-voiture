@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de course de voitures</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        
+        canvas {
+            background-color: #333;
+            display: block;
+            border: 2px solid #000;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .control-button {
+            width: 15vw;
+            height: 15vw;
+            max-width: 100px;
+            max-height: 100px;
+            background-color: orange;
+            color: white;
+            font-size: 24px;
+            border: none;
+            border-radius: 50%;
+            margin: 0 10px;
+            cursor: pointer;
+        }
+
+        .control-button:active {
+            background-color: darkorange;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Boutons de contrôle pour mobile -->
+    <div class="controls">
+        <button class="control-button" id="leftButton">⬅️</button>
+        <button class="control-button" id="rightButton">➡️</button>
+    </div>
+
+    <script>// Sélectionner le canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Ajuster la taille du canvas pour le rendre responsive
+        canvas.width = Math.min(window.innerWidth * 0.9, 400);
+        canvas.height = Math.min(window.innerHeight * 0.6, 600);
+        
+        // Voiture du joueur
+        let playerCar = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 100,
+            width: 50,
+            height: 100,
+            color: 'blue',
+            speed: 5,
+            dx: 0
+        };
+        
+        // Obstacles (autres voitures)
+        let obstacles = [];
+        let obstacleSpeed = 3;
+        
+        // Variables de jeu
+        let isGameOver = false;
+        let score = 0;
+        
+        // Sélectionner les boutons pour mobile
+        const leftButton = document.getElementById('leftButton');
+        const rightButton = document.getElementById('rightButton');
+        
+        // Ajouter des événements pour le clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft') {
+                playerCar.dx = -playerCar.speed;
+            } else if (e.code === 'ArrowRight') {
+                playerCar.dx = playerCar.speed;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                playerCar.dx = 0;
+            }
+        });
+        
+        // Ajouter des événements pour les boutons de contrôle (mobile & desktop)
+        leftButton.addEventListener('touchstart', () => {
+            playerCar.dx = -playerCar.speed;
+        });
+        leftButton.addEventListener('touchend', () => {
+            playerCar.dx = 0;
+        });
+        
+        rightButton.addEventListener('touchstart', () => {
+            playerCar.dx = playerCar.speed;
+        });
+        rightButton.addEventListener('touchend', () => {
+            playerCar.dx = 0;
+        });
+        
+        // Support pour desktop (clic)
+        leftButton.addEventListener('mousedown', () => {
+            playerCar.dx = -playerCar.speed;
+        });
+        leftButton.addEventListener('mouseup', () => {
+            playerCar.dx = 0;
+        });
+        
+        rightButton.addEventListener('mousedown', () => {
+            playerCar.dx = playerCar.speed;
+        });
+        rightButton.addEventListener('mouseup', () => {
+            playerCar.dx = 0;
+        });
+        
+        // Fonction pour dessiner la voiture du joueur
+        function drawPlayerCar() {
+            ctx.fillStyle = playerCar.color;
+            ctx.fillRect(playerCar.x, playerCar.y, playerCar.width, playerCar.height);
+        }
+        
+        // Fonction pour mettre à jour la position de la voiture du joueur
+        function updatePlayerCar() {
+            playerCar.x += playerCar.dx;
+        
+            // Empêcher la voiture de sortir des limites du canvas
+            if (playerCar.x < 0) {
+                playerCar.x = 0;
+            } else if (playerCar.x + playerCar.width > canvas.width) {
+                playerCar.x = canvas.width - playerCar.width;
+            }
+        }
+        
+        // Fonction pour générer des obstacles
+        function generateObstacle() {
+            const width = Math.random() * 30 + 40;  // Largeur des obstacles
+            const x = Math.random() * (canvas.width - width);
+            obstacles.push({ x: x, y: -100, width: width, height: 100, color: 'red' });
+        }
+        
+        // Fonction pour dessiner les obstacles
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+        
+        // Fonction pour mettre à jour la position des obstacles
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.y += obstacleSpeed;
+            });
+        
+            // Supprimer les obstacles en dehors du canvas
+            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
+        }
+        
+        // Fonction pour vérifier les collisions
+        function checkCollision(playerCar, obstacle) {
+            return (
+                playerCar.x < obstacle.x + obstacle.width &&
+                playerCar.x + playerCar.width > obstacle.x &&
+                playerCar.y < obstacle.y + obstacle.height &&
+                playerCar.y + playerCar.height > obstacle.y
+            );
+        }
+        
+        // Fonction pour vérifier si le jeu est terminé
+        function checkGameOver() {
+            obstacles.forEach(obstacle => {
+                if (checkCollision(playerCar, obstacle)) {
+                    isGameOver = true;
+                }
+            });
+        }
+        
+        // Fonction pour afficher le score
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+        }
+        
+        // Fonction principale du jeu
+        function gameLoop() {
+            if (isGameOver) {
+                ctx.fillStyle = 'black';
+                ctx.font = '40px Arial';
+                ctx.fillText('Game Over!', canvas.width / 2 - 100, canvas.height / 2);
+                return;
+            }
+        
+            // Effacer le canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+            // Mettre à jour et dessiner la voiture du joueur
+            updatePlayerCar();
+            drawPlayerCar();
+        
+            // Mettre à jour et dessiner les obstacles
+            updateObstacles();
+            drawObstacles();
+        
+            // Vérifier les collisions
+            checkGameOver();
+        
+            // Afficher le score
+            drawScore();
+        
+            // Générer de nouveaux obstacles de façon aléatoire
+            if (Math.random() < 0.03) {
+                generateObstacle();
+            }
+        
+            // Incrémenter le score au fur et à mesure que le jeu avance
+            score++;
+        
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Lancer le jeu
+        gameLoop();
+        </script>
+</body>
+</html>
